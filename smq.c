@@ -12,6 +12,8 @@ struct smq {
 	smq_msg_t msgs[];
 };
 
+void smq_msg_allocate(smq_msg_t* msg,size_t size);
+
 smq_t* smq_open(const char* name) {
 	size_t size = 512;
 	smq_t* smq = malloc(sizeof(smq_t)+sizeof(smq_msg_t)*size);
@@ -56,12 +58,12 @@ void smq_msg_init(smq_msg_t* msg) {
 }
 
 void smq_msg_write(smq_msg_t* msg,const void* data,size_t size) {
-	if(msg->allocated < msg->size + size) {
-		if(msg->allocated == 0) msg->allocated = 8;
-		while(msg->allocated < msg->size + size) msg->allocated *= 2;
-		msg->data = realloc(msg->data,msg->allocated);
+	size_t newsize = msg->size + size;
+	smq_msg_allocate(msg,newsize);
+	if(msg->allocated >= newsize) {
+		memcpy(msg->data+msg->size,data,size);
+		msg->size = newsize;
 	}
-	memcpy(msg->data+msg->size,data,size);
 }
 
 void smq_msg_release(smq_msg_t* msg) {
@@ -80,4 +82,17 @@ const void* smq_msg_data(smq_msg_t* msg) {
 
 size_t smq_msg_size(smq_msg_t* msg) {
 	return msg->size;
+}
+
+void smq_msg_allocate(smq_msg_t* msg,size_t size) {
+	if(msg->allocated < size) {
+		size_t allocate = msg->size;
+		if(allocate==0) allocate = 8;
+		while(allocate < size) allocate *= 2;
+		void* data = realloc(msg->data,allocate);
+		if(data) {
+			msg->allocated = allocate;
+			msg->data = data;
+		}
+	}
 }

@@ -19,7 +19,7 @@ void* send(void* arg) {
 		int len = snprintf(data,BUFFER_SIZE,"Message%d from worker %d",i,params->numthread);
 		smq_msg_t msg;
 		smq_msg_init(&msg);
-		smq_msg_write(&msg,data,len);
+		smq_msg_write(&msg,data,len+1);
 		smq_send(params->smq,&msg);
 	}
 	free(data);
@@ -30,7 +30,7 @@ void* receive(void* arg) {
 	thread_params_t* params = (thread_params_t*) arg;
 	for(unsigned i=0; i<params->nbmsgs; i++) {
 		smq_msg_t msg;
-		smq_msg_init(&msg);
+		//smq_msg_init(&msg);
 		smq_receive(params->smq,&msg);
 		printf("worker %d received %s\n",params->numthread,(char*) smq_msg_data(&msg));
 		smq_msg_release(&msg);
@@ -52,7 +52,7 @@ int test(unsigned nbmsgs,unsigned nbsenders,unsigned nbreceivers) {
 	for(unsigned i=nbsenders; i<nbthreads; i++) {
 		params[i].numthread = i;
 		params[i].nbmsgs = nbmsgs / nbreceivers;
-		if(i==0) params[i].nbmsgs += nbmsgs % nbreceivers;
+		if(i==nbsenders) params[i].nbmsgs += nbmsgs % nbreceivers;
 		params[i].smq = smq;
 		pthread_create(&params[i].thread,0,receive,&params[i]);
 	}
